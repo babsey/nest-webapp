@@ -1,0 +1,13 @@
+.car {
+    stroke: black;
+    fill: white;
+}
+
+.wheel {
+    stroke: black;
+    fill: black;
+}
+
+.red {
+    fill: red;
+}

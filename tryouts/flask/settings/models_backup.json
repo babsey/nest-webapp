@@ -1,0 +1,4 @@
+{
+    "hh_psc_alpha":             ["C_m", "E_L", "I_e", "g_L", "tau_ex", "tau_in", "E_Na", "g_Na", "E_K", "g_K", "Act_m", "Act_h", "Inact_n"],
+    "mat2_psc_exp":             ["E_L", "E_L", "I_e", "V_th", "alpha_1", "alpha_2", "omega", "t_ref", "tau_m", "tau_syn_ex", "tau_syn_in"],
+}

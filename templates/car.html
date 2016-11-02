@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .car {
+        stroke: black;
+        fill: none;
+    }
+
+    .wheel {
+        stroke: black;
+        fill: black;
+    }
+</style>
+<body>
+    <div id="world"></div>
+<script src="../static/js/d3.min.js"></script>
+<script src="../static/js/car.js"></script>
+
+<script>
+var width = 950, height = 500;
+var w = 30;
+var h = 60;
+var x = 200;
+var y = 200;
+var r = -90;
+var v = 6;
+
+var svg = d3.select("#world").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .append("g")
+    .attr("transform", "translate(0,0)");
+
+var car = build_car(w,h)
+move_car()
+
+d3.select(window).on("keydown", function() {
+    d3.event.preventDefault();
+
+    if(d3.event.keyCode === 34 || d3.event.keyCode === 36 || d3.event.keyCode === 37) { r = r - v } // left
+    if(d3.event.keyCode === 33 || d3.event.keyCode === 35 ||  d3.event.keyCode === 39) { r = r + v }  // right
+    if(d3.event.keyCode === 33 || d3.event.keyCode === 36 || d3.event.keyCode === 38) {
+        x = x - Math.sin(r / 180 * Math.PI) * v;
+        y = y + Math.cos(r / 180 * Math.PI) * v;
+    }  // front
+    if(d3.event.keyCode === 34 || d3.event.keyCode === 35 || d3.event.keyCode === 40) {
+        x = x + Math.sin(r / 180 * Math.PI) * v;
+        y = y - Math.cos(r / 180 * Math.PI) * v;
+    }  // back
+
+    move_car()
+
+});
+</script>

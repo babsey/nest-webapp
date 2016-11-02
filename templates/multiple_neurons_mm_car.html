@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+<link rel="stylesheet" href="/static/css/d3.slider.css" />
+<link rel="stylesheet" href="/static/css/car.css" />
+<title>Nest web interface</title>
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.vth {
+    stroke: red;
+    stroke-width: 1;
+    stroke-dasharray: 3, 3;
+}
+
+.vreset {
+    stroke: green;
+    stroke-width: 1;
+    stroke-dasharray: 3, 3;
+}
+
+dt {
+    margin-top: 20px;
+}
+</style>
+</head>
+<body>
+<div id="pos"></div>
+<div id="world"></div>
+
+<div class="container">
+    <h2 div="page-header">Nest web interface</h2>
+    <div class="col-sm-8">
+        <div class="actions">
+            <div class="col-sm-4">
+            <div class="form-group">
+                <label for="id_simulation">Simulation</label>
+                <select id="id_simulation" class="form-control">
+                    <option value="">default</option>
+                    {% for sim in sims %}
+                        <option value="{{ sim }}">{{ sim }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-sm-4">
+           <div class="form-group">
+                <label for="id_simtime">Simulation time [ms]</label>
+                <select id="id_simtime" class="form-control">
+                    <option value="20.">20.</option>
+                    <option value="50.">50.</option>
+                    <option value="100.">100.</option>
+                    <option value="200.">200.</option>
+                    <option value="500." selected>500.</option>
+                    <option value="1000.">1000.</option>
+                    <option value="2000.">2000.</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-sm-4 btn-group">
+            <button id="sim_refresh" class="btn btn-default"><i class="glyphicon glyphicon-refresh"></i></button>
+            <button id="sim_play" class="btn btn-default"><i class="glyphicon glyphicon-play"></i></button>
+            <!-- <button id="sim_pause" class="btn btn-default"><i class="glyphicon glyphicon-pause"></i></button> -->
+            <button id="sim_stop" class="btn btn-default"><i class="glyphicon glyphicon-stop"></i></button>
+        </div>
+    </div>
+    <div id="chart"></div>
+</div>
+<div class="col-sm-4">
+    <div class="container-fluid">
+
+        <div id="kernel" class="model">
+        <dl class="params"></dl>
+        </div>
+
+        <div id="input" class="model">
+            <div class="form-group">
+                <label for="id_input">Input</label>
+                <select id="id_input" class="form-control model_select" >
+                    {% for node in nodes|inputs %}
+                        <option value="{{ node }}">{{ node|stringify }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="id_input_param">Input parameter set</label>
+                <select id="id_input_param" class="form-control presets" >
+                    <option value="default">default</option>
+                </select>
+            </div>
+
+            <dl class="params"></dl>
+        </div>
+
+        <hr style="margin:25px">
+
+        <div id="neuron" class="model">
+            <div class="form-group">
+                <label for="id_neuron">Neuron</label>
+                <select id="id_neuron" class="form-control model_select" >
+                    {% for node in nodes|neurons %}
+                        <option value="{{ node }}">{{ node|stringify }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="id_neuron_param">Neuron parameter set</label>
+                <select id="id_neuron_param" class="form-control presets" >
+                    <option value="default">default</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="id_recordables">Record</label>
+                <select id="id_recordables" class="form-control recordables">
+                </select>
+            </div>
+
+            <dl class="params"></dl>
+        </div>
+    </div>
+</div>
+</div>
+    <script type="text/javascript" src="/static/js/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="/static/js/d3.min.js"></script>
+    <script type="text/javascript" src="/static/js/d3.slider.js"></script>
+    <script type="text/javascript" src="/static/js/car.js"></script>
+
+    <script>
+        var cwidth = 950, cheight = 300;
+        var w = 12;
+        var h = 30;
+        var x = 300;
+        var y = 150;
+        var r = 0;
+        var rv = 5;
+        var v = 5;
+        var rr = Math.atan(w/h);
+        var d = Math.sqrt(Math.pow(h/2,2)+Math.pow(w/2,2));
+
+        var svg = d3.select("#world").append("svg")
+          .attr("width", cwidth)
+          .attr("height", cheight)
+          .append("g")
+            .attr("transform", "translate(0,0)");
+
+        // svg.on('mousemove', function() {
+        //     $('#pos').html('('+d3.mouse(this)[0]+','+d3.mouse(this)[1]+')')})
+
+        var circle = build_circle(10)
+        move_circle(425,150)
+        var circle_pos = [circle.attr('cx'),circle.attr('cy')];
+
+        var car = build_car(w,h)
+        move_car(x,y,r)
+
+        var rball = svg.append('circle').attr('r',3);
+        var lball = svg.append('circle').attr('r',3);
+
+        function dist(p, q) {
+            return Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+        }
+
+    </script>
+
+    <script>
+    var rec = 'V_m';
+    var nodes = {'kernel': {'params': {'rng_seeds': 0}}};
+    var data_all = [];
+    var preset = 'default';
+    var simulations = {{ sims|safe }};
+    var neurons = [];
+    var simtime = 500.;
+    var syn_dict = [{'weight':1.},{'weight':1.}]
+
+    function update() {
+        if (!running) {
+            nodes.neuron.count = {{ count }};
+            nodes.simtime = simtime;
+
+            $.ajax({
+                method: "POST",
+                url: "init/",
+                data: JSON.stringify(nodes),
+                contentType: 'application/json;charset=UTF-8',
+            }).done(function(res) {
+                data_all = res.data;
+                data = res.data;
+                console.log(JSON.stringify(res.values));
+                running = false;
+                setTimeout(function() { draw(); }, 100);
+            })
+        }
+    }
+
+    function slider(node, param, min, max, val) {
+        nodes[node]['params'][param] = parseFloat(val);
+        d3.select('#'+param).call(
+            d3.slider()
+                .min(min)
+                .max(max)
+                .value(val)
+                .axis(true)
+                .on("slide", function(evt, value) {
+                    if ($('#'+node).find('.presets').val() != 'custom') {
+                        $('#'+node).find('.presets').prepend('<option value="custom">custom</option>').val('custom')
+                    }
+                    if ($('#id_simulation').val() != 'custom') {
+                        $('#id_simulation').prepend('<option value="custom">custom</option>').val('custom');
+                    }
+                    nodes[node]['params'][param] = parseFloat(value);
+                    $('#id_'+param).find('.value').html(value);
+
+                    update();
+                })
+
+        );
+        //
+        // $("#"+param).on("mouseup", function(evt, value) {
+        //     update();
+        // })
+    }
+
+    function update_params(node, model, preset) {
+        $('#' + node +' .model_select').val(model);
+        $.ajax({
+            method: "GET",
+            url: "parameters/",
+            data: {'model': model, 'preset': preset},
+        }).done(function(data) {
+            nodes[node] = {'model':model, 'params':{}};
+
+            $('#'+node).find('.presets').html('<option value="default">default</option>');
+            for (var idx in data.presets) {
+                var label = data.presets[idx];
+                $('#'+node).find('.presets').append('<option id="id_'+ label +'" value="'+ label +'">'+ label +'</option>')
+            }
+            $('#' + node +' .presets').val(preset);
+
+            if (node == 'neuron') {
+                $('#id_recordables').empty();
+                for (var idx in data.recordables) {
+                    var label = data.recordables[idx];
+                    $('#id_recordables').append('<option id="id_'+ label +'" value="'+ label +'">'+ label +'</option>')
+                }
+                $('#id_recordables').val(data.recordables.indexOf(rec) >= 0 ? rec : 'V_m');
+            }
+
+            $('#'+node).find('.params').empty();
+            for (param_key in data.params) {
+                var value = parseFloat(data.params[param_key]);
+                $('#'+node).find('.params').append('<dt id="id_'+ param_key+'">'+ param_key +': <span class="value">' + value +'</span></dt><dd id="'+ param_key +'"></dd>')
+                if (value == 0) {
+                    slider(node, param_key, 0, 1000, value)
+                } else if (value > 0) {
+                    slider(node, param_key, 0, 2*value, value)
+                } else {
+                    slider(node, param_key, 2*value, 0, value)
+                }
+            }
+        })
+    }
+
+    $('#id_simulation').on('change', function() {
+        rec = 'V_m';
+        running = false;
+        for (var i in simulations[this.value]) {
+            var node = simulations[this.value][i]
+            console.log(i, node.model, node.params)
+            update_params(i, node.model, node.params);
+        }
+        update();
+    })
+
+    $('#id_simtime').on('change', function() {
+        simtime = this.value;
+        update();
+    })
+
+    $('.model .model_select').on('change', function() {
+        var model = $(this).parents('.model');
+        rec = 'V_m';
+        update_params(model.attr('id'), this.value, 'default');
+        setTimeout(function() { update(); }, 100);
+    })
+
+    $('.model .presets').on('change', function() {
+        var model = $(this).parents('.model');
+        update_params(model.attr('id'), model.find('.model_select :selected').attr('value'), this.value);
+        setTimeout(function() { update(); }, 100);
+    })
+
+    $('#id_recordables').on('change', function() {
+        rec = this.value;
+        if (neurons.length != 0) {
+            draw()
+        };
+    })
+
+    $('#sim_refresh').on('click', function() {
+        update();
+    })
+
+    $('#sim_play').on('click', function() {
+        if (!($('#sim_play').hasClass('active'))) {
+            $(this).addClass('active');
+            running = true;
+            setTimeout(function() { draw(); }, 100);
+        }
+    })
+
+    $('#sim_pause').on('click', function() {
+        if ($('#sim_play').hasClass('active')){
+            $(this).toggleClass('active');
+            running = !running;
+            setTimeout(function() { draw(); }, 100);
+        }
+    })
+
+    $('#sim_stop').on('click', function() {
+        $("#sim_play").removeClass('active');
+        data = data_all;
+        running = false;
+        setTimeout(function() { draw(); }, 100);
+    })
+
+    $('#kernel').find('.params').append('<dt id="id_rng_seeds">rng_seeds: <span class="value">0</span></dt><dd id="rng_seeds"></dd>')
+    slider('kernel', 'rng_seeds', 0,100, nodes.kernel.params.rng_seeds);
+
+    update_params('input', 'noise_generator', 'default');
+    update_params('neuron', 'iaf_neuron', 'default');
+
+    // D3
+
+    var margin = {top: 20, right: 20, bottom: 30, left: 50},
+        width = 760 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+
+    var xScale = d3.scale.linear()
+        .range([0, width]);
+
+    var yScale = d3.scale.linear()
+        .range([height, 0]);
+
+    var color = d3.scale.category10();
+
+    var xAxis = d3.svg.axis()
+        .scale(xScale)
+        .orient("bottom").ticks(5);
+
+    var yAxis = d3.svg.axis()
+        .scale(yScale)
+        .orient("left").ticks(5);
+
+    var line = d3.svg.line()
+        .x(function(d) { return xScale(d.x); })
+        .y(function(d) { return yScale(d.y); });
+
+    function yScaling(dd) {
+        var ymin = d3.min(dd, function(d) { return d3.min(d.y) });
+        var ymax = d3.max(dd, function(d) { return d3.max(d.y) });
+
+        if (ymin != ymax) {
+            return [ymin, ymax]
+        } else {
+            return [ymin-1, ymax+1]
+        }
+    }
+
+    var running = false;
+    function draw() {
+
+        var Vth_line = d3.svg.line()
+            .x(function(d) { return xScale(d.x); })
+            .y(function() { return yScale(nodes.neuron.params.V_th); });
+
+        var Vreset_line = d3.svg.line()
+            .x(function(d) { return xScale(d.x); })
+            .y(function() { return yScale(nodes.neuron.params.V_reset); });
+
+        color.domain(d3.range(data[rec][0].y.length));
+
+        neurons = color.domain().map(function(name) {
+            return {
+                name: name,
+                values: data[rec].map(function(d) {
+                    return {x: +d.x, y: +d.y[name]};
+                })
+            };
+        });
+
+        $('#chart').empty();
+        var svg = d3.select("#chart").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+          .append("rect")
+            .attr("width", width)
+            .attr("height", height);
+
+
+        // xScale.domain(d3.extent(data[rec], function(d) { return d.x; }));
+        // yScale.domain(d3.extent(yScaling(data[rec]))).nice(10);
+        xScale.domain(d3.extent(neurons[0].values, function(d) { return d.x; }));
+        yScale.domain(d3.extent(neurons[0].values, function(d) { return d.y; })).nice(2);
+
+        svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + height + ")")
+          .call(xAxis);
+
+        svg.append("g")
+          .attr("class", "y axis")
+          .call(yAxis);
+
+        svg.append("text")
+            .attr("class", "x label")
+            .attr("text-anchor", "middle")
+            .attr("x", width/2)
+            .attr("y", height+margin.bottom-5)
+            .text("Time (ms)");
+
+        svg.append("text")
+            .attr("class", "y label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .attr("text-anchor", "end")
+            .text("Membrane potential (mV)");
+
+        var neuron = svg.selectAll(".neuron")
+            .data(neurons)
+            .enter().append("g")
+            .attr("class", "neuron");
+
+        neuron.append("path")
+            .attr("class", "line")
+            .attr("d", function(d) { return line(d.values); })
+            .style("stroke", function(d) { return color(d.name); });
+
+
+        var Vth_path = svg.append("g")
+                .attr("clip-path", "url(#clip)")
+              .append("path")
+                .datum(neurons[0].values)
+                .attr("class", "vth line")
+                .attr("d", Vth_line);
+
+        var Vreset_path = svg.append("g")
+                .attr("clip-path", "url(#clip)")
+              .append("path")
+                .datum(neurons[0].values)
+                .attr("class", "vreset line")
+                .attr("d", Vreset_line);
+
+        tick();
+        function tick() {
+            $('.model_select').attr('disabled', running);
+            $('#id_simulation').attr('disabled', running);
+            $('#id_simtime').attr('disabled', running);
+
+            if (running) {
+                if (running == 'once') { running = false }
+                // nodes.input['syn_dict'] = syn_dict;
+                // push a new data point onto the back
+                $.ajax({
+                    method: "POST",
+                    url: "simulate/",
+                    data: JSON.stringify(nodes),
+                    contentType: 'application/json;charset=UTF-8',
+                }).done(function(res) {
+                    for (val in res.data) {
+                        data[val] = data[val].concat(res.data[val]);
+                        data_all[val] = data_all[val].concat(res.data[val]);
+
+                    }
+                    var V_m = data['V_m']
+                    V_mi = V_m[V_m.length-3].y
+                    V_mj = V_m[V_m.length-2].y
+                    V_m = d3.zip(V_mi,V_mj)
+                    b = [V_m[0][1]-V_m[0][0],V_m[1][1]-V_m[1][0]]
+                    // console.log(b)
+
+                    for (var i=0;i<b.length;i++) {
+                        if ((V_m[i][1] <= -70.)) {
+                            console.log(i, b[i], V_m[i][1])
+                            r = (r + [-1,1][i]*rv)%360.
+                            x = (x - Math.sin(r / 180. * Math.PI) * v +cwidth) % cwidth;
+                            y = (y + Math.cos(r / 180. * Math.PI) * v +cheight) % cheight;
+                        }
+                    }
+
+
+
+                    move_car(x,y,r)
+                    var ri = r/360.0*2*Math.PI
+                    var car_left = [parseFloat(car.attr('x'))+Math.sin(rr-ri)*d,parseFloat(car.attr('y'))+Math.cos(rr-ri)*d]
+                    var car_right = [parseFloat(car.attr('x'))-Math.sin(rr+ri)*d,parseFloat(car.attr('y'))+Math.cos(rr+ri)*d]
+                    var dist_left = dist(circle_pos,car_left)
+                    var dist_right = dist(circle_pos,car_right)
+                    var dist_center = (dist_left + dist_right) / 2.
+
+                    lball.attr('cx',car_left[0]).attr('cy',car_left[1]).classed('red', dist_left<dist_right)
+                    rball.attr('cx',car_right[0]).attr('cy',car_right[1]).classed('red', dist_right<dist_left)
+                    // syn_dict = [{'weight': dist_left /dist_center*2}, {'weight': dist_right / dist_center*2}]
+
+                    color.domain().map(function(name, i) {
+                        res.data[rec].map(function(d) {
+                            neurons[i].values.push({x: +d.x, y: +d.y[name]});
+                        });
+                    });
+
+
+                })
+
+                xScale.domain(d3.extent(neurons[0].values, function(d) { return d.x; }));
+                yScale.domain(d3.extent(neurons[0].values, function(d) { return d.y; })).nice(2);
+
+                d3.select(".x.axis")
+                    .transition()
+                    .duration(300)
+                    .ease("linear")
+                    .call(xAxis);
+
+                d3.select(".y.axis")
+                    .transition()
+                    .duration(300)
+                    .ease("linear")
+                    .call(yAxis);
+
+                svg.selectAll(".neuron")
+                    .data(neurons);
+
+                neuron.selectAll(".line")
+                    .attr("class", "line")
+                    .attr("transform", null)
+                    .transition()
+                    .duration(0)
+                    .ease("linear")
+                    .attr("d", function(d) { return line(d.values); })
+                    .each("end", running ? tick : false);
+
+                color.domain().map(function(name, i) {
+                    neurons[i].values.shift()
+                });
+            }
+        }
+    }
+    </script>
+
+
+</body>
+</html>

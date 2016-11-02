@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../static/css/bootstrap.min.css" />
+<title>Network Layout</title>
+    <style>
+
+.node {
+    fill: #ccc;
+    stroke: #fff;
+    stroke-width: 2px;
+}
+
+.link {
+    fill: none;
+    stroke: #777;
+    stroke-width: 2px;
+}
+
+    </style>
+</head>
+
+<body>
+<div id="layout-holder"></div>
+
+<script type="text/javascript" src="../static/js/jquery-2.1.4.min.js"></script>
+<script type="text/javascript" src="../static/js/d3.min.js"></script>
+<script>
+function log10(val) {
+  return Math.log(val) / Math.LN10;
+}
+
+var width = 640,
+    height = 480;
+
+var nodes = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 }
+];
+
+var links = [
+    // { source: 0, target: 0},
+    // { source: 0, target: 0, weight: 1 },
+    { source: 0, target: 1, weight: 1 },
+    { source: 0, target: 2, weight: 1 },
+    { source: 2, target: 0, weight: 1 },
+    { source: 0, target: 3, weight: -1 },
+    { source: 1, target: 3, weight: -1 },
+    { source: 2, target: 3, weight: -1 }
+];
+
+var svg = d3.select("body").append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+// line displayed when dragging new nodes
+var drag_line = svg.append('path')
+    .attr('class', 'link dragline')
+    .attr('d', 'M0,0L0,0');
+
+var force = d3.layout.force()
+    .size([width, height])
+    .nodes(nodes)
+    .links(links)
+    .linkDistance(150)
+    .charge(-500);
+
+// define arrow markers for graph links
+svg.append('defs').append('marker')
+        .attr('id', 'arrow-marker')
+        .attr('refX', 6)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('markerWidth', 5)
+        .attr('markerHeight', 5)
+        .attr('orient', 'auto')
+    .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#000');
+
+svg.append('defs').append('marker')
+        .attr('id', 'circle-marker')
+        .attr('refX', 2)
+        .attr('viewBox', '-5 -5 10 10')
+        .attr('markerWidth', 5)
+        .attr('markerHeight', 5)
+        .attr('orient', 'auto')
+    .append('circle')
+        .attr('r', 5)
+        .attr('fill', '#000');
+
+var node = svg.selectAll('.node')
+    .data(nodes)
+    .enter().append('g')
+    .attr('class', 'node');
+
+    node.append('circle')
+        .attr('dx', 0)
+        .attr('dy', 4)
+        .attr('r', 15).attr('transform', 'scale(1.0)');
+
+    // show node IDs
+    node.append('text')
+        .attr("x", 0)
+        .attr("dy", ".35em")
+        .attr("text-anchor", "middle")
+        .attr('class', 'id')
+        .text(function(d, i) { return i });
+
+var link = svg.selectAll('.link')
+    .data(links)
+    .enter().append('path')
+    .style('marker-end', function(d) { return d.weight < 0 ? 'url(#circle-marker)' : 'url(#arrow-marker)'; })
+    .attr('class', 'link');
+
+var weight = svg.selectAll('.weight')
+    .data(links)
+    .enter().append('text')
+    .attr('class', 'weight')
+    .text(function(d) { return d.weight; });
+
+
+force.on('tick', function() {
+
+    node.attr('transform', function(d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+
+        // draw curved edges with proper padding from node centers
+    link.attr('d', function(d) {
+        var deltaX = d.target.x - d.source.x,
+            deltaY = d.target.y - d.source.y;
+
+            if (deltaX != 0) {
+                var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
+                    normX = deltaX / dist,
+                    normY = deltaY / dist,
+                    sourceX = d.source.x + (15 * normX),
+                    sourceY = d.source.y + (15 * normY),
+                    targetX = d.target.x - (19 * normX),
+                    targetY = d.target.y - (19 * normY);
+
+                return 'M' + sourceX + ',' + sourceY + "A" + dist + "," + dist + " 0 0,1 " + targetX + ',' + targetY;
+            } else {
+                var sourceX = d.source.x,
+                    sourceY = d.source.y,
+                    targetX = d.target.x,
+                    targetY = d.target.y;
+                return 'M' + sourceX + ',' + sourceY + "C" + sourceX+100 + "," + sourceY+300 + " " + targetX+300 + "," + targetY+100 + " "  + targetX + ',' + targetY;
+            }
+    });
+
+    weight.attr('transform', function(d) {
+            var deltaX = d.target.x - d.source.x,
+                deltaY = d.target.y - d.source.y,
+                medianX = (d.target.x + d.source.x) / 2,
+                medianY = (d.target.y + d.source.y) / 2;
+
+            var x = medianX+(deltaY/10) ,
+                y = medianY-(deltaX/10);
+
+            return 'translate(' + x + ',' + y + ')';
+         })
+        .attr('x', function(d) { return d.x; })
+        .attr('y', function(d) { return d.y; });
+});
+
+// set the graph in motion
+force.start();
+
+d3.select('body').on('keydown', function() {
+
+        // ctrl
+        if (d3.event.keyCode === 17) {
+            node.call(force.drag);
+        }
+
+    })
+    .on('keyup', function() {
+
+        // ctrl
+        if(d3.event.keyCode === 17) {
+            node.on('mousedown.drag', null);
+        }
+});
+
+</script>
+
+</body>
+</html>

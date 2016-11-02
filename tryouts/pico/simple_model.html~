@@ -1,0 +1,85 @@
+<html>
+<body>
+
+    <div id="chart"></div>
+
+
+    <script type="text/javascript" src="static/js/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="static/js/d3.min.js"></script>
+
+    <script>
+$.ajax({
+  type: "POST",
+  url: "simple_model.py",
+}).done(function( data ) {
+    console.log(data);
+    var times = data['times'];
+    var V_m = data['V_m'];
+
+    var margin = {top: 30, right: 20, bottom: 40, left: 45},
+        width = options.voltmeter.width - margin.left - margin.right,
+        height = 300 - margin.top - margin.bottom;
+
+    var xScale = d3.scale.linear().range([0, width]).domain(d3.extend(times)),
+        yScale = d3.scale.linear().range([height, 0]).domain(d3.extend(V_m)).nice(10);
+
+    var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(3),
+        yAxis = d3.svg.axis().scale(yScale).orient("left").tickSize(-width).ticks(5);
+
+    var line = d3.svg.line()
+        .interpolate("monotone")
+        .x(function(d, i) { return xScale(times[i]); })
+        .y(function(d) { return yScale(d); });
+
+    var svg = d3.select(reference).append("svg")
+        .attr("width", "100%")
+        .attr("viewBox", "0 0 " + (width+margin.left+margin.right) + " " + (height+margin.top+margin.bottom))
+        .attr("class", "voltmeter");
+
+    svg.append("svg:defs").append("clipPath")
+        .attr("id", "clip")
+      .append("rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    var g = svg.append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+        .attr("class", "voltmeter");
+
+    g.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+    g.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+
+    g.append("svg:path")
+        .datum(V_m)
+        .attr("class", "line")
+        .attr("clip-path", "url(#clip)")
+        .attr("d", line);
+
+    g.append("svg:text")
+        .attr("class", "x label")
+        .attr("text-anchor", "middle")
+        .attr("x", width/2)
+        .attr("y", height+margin.bottom-5)
+        .text("Time (ms)");
+
+    g.append("svg:text")
+        .attr("class", "y label")
+        .attr("text-anchor", "middle")
+        .attr("x", -height/2)
+        .attr("y", -(margin.left-5))
+        .attr("dy", ".75em")
+        .attr("transform", "rotate(-90)")
+        .text("Membrane potential (mV)");
+
+});
+
+    </script>
+
+</body>
+</html>

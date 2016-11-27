@@ -3,7 +3,7 @@ sys.path.append('/usr/local/lib/python2.7/dist-packages')
 
 from flask import Flask, jsonify, render_template, request, abort
 import nest
-import helpers as hh
+import lib.helpers as hh
 
 
 app = Flask(__name__)
@@ -39,7 +39,7 @@ def init():
     events = nest.GetStatus(vm,'events')[0]
     nest.SetStatus(vm, {'n_events': 0})
 
-    # return render_template('iaf_neuron.html', data=hh.prep_single([events['times'], events['V_m']]))
+    # return render_template('iaf_neuron_d3-slider.html', data=hh.prep_single([events['times'], events['V_m']]))
     return render_template('iaf_neuron_jquery-slider.html', data=hh.prep_single([events['times'], events['V_m']]))
 
 
